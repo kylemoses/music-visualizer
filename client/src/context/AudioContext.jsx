@@ -34,29 +34,43 @@ export function AudioProvider({ children }) {
    * Poll for job status
    */
   const pollJobStatus = useCallback(async (jobId) => {
+    console.log('[Poll] Checking status for job:', jobId)
     try {
       const response = await fetch(`/api/status/${jobId}`)
+      console.log('[Poll] Response status:', response.status)
       const data = await response.json()
+      console.log('[Poll] Job data:', JSON.stringify(data, null, 2))
       
       if (data.status === 'completed' && data.stems) {
+        console.log('[Poll] Job completed! Stems:', data.stems)
         // Clear polling
         clearInterval(pollIntervalRef.current)
         
         setProcessingStatus({ stage: 'downloading', progress: 0.8 })
         
         // Load the separated stems
-        await loadStems(data.stems)
+        console.log('[Poll] Loading stems...')
+        try {
+          await loadStems(data.stems)
+          console.log('[Poll] Stems loaded successfully')
+        } catch (loadError) {
+          console.error('[Poll] Failed to load stems:', loadError)
+          throw loadError
+        }
         
         setProcessingStatus({ stage: 'loading', progress: 0.95 })
         
         // Start analysis loop
+        console.log('[Poll] Starting analysis loop')
         startAnalysisLoop(setAnalysisData)
         
         setIsProcessing(false)
         setProcessingStatus(null)
         setIsReady(true)
+        console.log('[Poll] Ready to play!')
         
       } else if (data.status === 'failed') {
+        console.error('[Poll] Job failed:', data.error)
         clearInterval(pollIntervalRef.current)
         setProcessingStatus({ 
           stage: 'error', 
@@ -67,6 +81,7 @@ export function AudioProvider({ children }) {
         
       } else {
         // Still processing
+        console.log('[Poll] Still processing, progress:', data.progress)
         setProcessingStatus({ 
           stage: 'processing', 
           progress: data.progress || 0.3,
@@ -74,7 +89,8 @@ export function AudioProvider({ children }) {
         })
       }
     } catch (error) {
-      console.error('Failed to poll status:', error)
+      console.error('[Poll] Failed to poll status:', error)
+      console.error('[Poll] Error stack:', error.stack)
     }
   }, [loadStems, startAnalysisLoop])
 
@@ -82,6 +98,7 @@ export function AudioProvider({ children }) {
    * Upload an audio file for processing
    */
   const uploadFile = useCallback(async (file) => {
+    console.log('[Upload] Starting upload for file:', file.name, 'type:', file.type, 'size:', file.size)
     setIsProcessing(true)
     setProcessingStatus({ stage: 'uploading', progress: 0.1 })
     
@@ -89,16 +106,22 @@ export function AudioProvider({ children }) {
       const formData = new FormData()
       formData.append('file', file)
       
+      console.log('[Upload] Sending POST to /api/separate')
       const response = await fetch('/api/separate', {
         method: 'POST',
         body: formData,
       })
       
+      console.log('[Upload] Response status:', response.status, response.statusText)
+      
       if (!response.ok) {
-        throw new Error('Upload failed')
+        const errorText = await response.text()
+        console.error('[Upload] Server error response:', errorText)
+        throw new Error(`Upload failed: ${response.status} - ${errorText}`)
       }
       
       const data = await response.json()
+      console.log('[Upload] Success, job_id:', data.job_id)
       
       setProcessingStatus({ stage: 'processing', progress: 0.2 })
       
@@ -108,7 +131,8 @@ export function AudioProvider({ children }) {
       }, 2000)
       
     } catch (error) {
-      console.error('Upload error:', error)
+      console.error('[Upload] Error:', error)
+      console.error('[Upload] Error stack:', error.stack)
       setProcessingStatus({ 
         stage: 'error', 
         progress: 0, 

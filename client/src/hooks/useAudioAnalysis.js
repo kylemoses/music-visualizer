@@ -147,26 +147,49 @@ export function useAudioAnalysis() {
    * Load stems from URLs and set up analysis pipeline
    */
   const loadStems = useCallback(async (stemUrls) => {
+    console.log('[LoadStems] Starting to load stems:', stemUrls)
     const ctx = initAudioContext()
+    console.log('[LoadStems] AudioContext state:', ctx.state)
     
     // Load all stem audio files
     const loadPromises = STEMS.map(async (stem) => {
-      if (!stemUrls[stem]) return null
+      if (!stemUrls[stem]) {
+        console.log('[LoadStems] No URL for stem:', stem)
+        return null
+      }
       
-      const response = await fetch(stemUrls[stem])
-      const arrayBuffer = await response.arrayBuffer()
-      const audioBuffer = await ctx.decodeAudioData(arrayBuffer)
-      
-      return { stem, audioBuffer }
+      console.log('[LoadStems] Fetching stem:', stem, 'from:', stemUrls[stem])
+      try {
+        const response = await fetch(stemUrls[stem])
+        console.log('[LoadStems] Fetch response for', stem, ':', response.status, response.statusText)
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        }
+        
+        const arrayBuffer = await response.arrayBuffer()
+        console.log('[LoadStems] Got arrayBuffer for', stem, ', size:', arrayBuffer.byteLength)
+        
+        const audioBuffer = await ctx.decodeAudioData(arrayBuffer)
+        console.log('[LoadStems] Decoded audio for', stem, ', duration:', audioBuffer.duration, 'seconds')
+        
+        return { stem, audioBuffer }
+      } catch (error) {
+        console.error('[LoadStems] Failed to load stem:', stem, error)
+        throw error
+      }
     })
     
+    console.log('[LoadStems] Waiting for all stems to load...')
     const results = await Promise.all(loadPromises)
+    console.log('[LoadStems] All stems loaded, setting up audio nodes')
     
     // Create sources, gain nodes, and analyzers for each stem
     results.forEach(result => {
       if (!result) return
       
       const { stem, audioBuffer } = result
+      console.log('[LoadStems] Setting up audio nodes for:', stem)
       
       // Create buffer source
       const source = ctx.createBufferSource()
@@ -189,6 +212,7 @@ export function useAudioAnalysis() {
       analyzersRef.current[stem] = analyzer
     })
     
+    console.log('[LoadStems] All audio nodes set up, initialization complete')
     setIsInitialized(true)
     return true
   }, [initAudioContext])

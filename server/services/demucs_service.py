@@ -10,6 +10,14 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 from enum import Enum
 
+# Set up FFmpeg path from imageio-ffmpeg if available (for portability)
+try:
+    import imageio_ffmpeg
+    ffmpeg_path = os.path.dirname(imageio_ffmpeg.get_ffmpeg_exe())
+    os.environ["PATH"] = ffmpeg_path + os.pathsep + os.environ.get("PATH", "")
+except ImportError:
+    pass  # Fall back to system FFmpeg
+
 
 class JobStatusEnum(str, Enum):
     PENDING = "pending"
@@ -64,7 +72,6 @@ class DemucsService:
             cmd = [
                 "python", "-m", "demucs",
                 "-n", self.MODEL,
-                "--two-stems=None",  # Get all 4 stems
                 "-o", job_output_dir,
                 input_path
             ]

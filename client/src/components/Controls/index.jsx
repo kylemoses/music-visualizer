@@ -7,27 +7,6 @@ const Container = styled.div`
   gap: ${({ theme }) => theme.spacing.md};
 `
 
-const ModeToggle = styled.div`
-  display: flex;
-  background: ${({ theme }) => theme.colors.backgroundSecondary};
-  padding: ${({ theme }) => theme.spacing.xs};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-`
-
-const ModeButton = styled.button`
-  padding: ${({ theme }) => `${theme.spacing.sm} ${theme.spacing.md}`};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: ${({ theme, $active }) => $active ? theme.colors.text : theme.colors.textMuted};
-  background: ${({ theme, $active }) => $active ? theme.colors.primary : 'transparent'};
-  transition: all ${({ theme }) => theme.transitions.fast};
-
-  &:hover {
-    color: ${({ theme }) => theme.colors.text};
-  }
-`
-
 const StemControls = styled.div`
   display: flex;
   gap: ${({ theme }) => theme.spacing.xs};
@@ -157,7 +136,7 @@ const STEM_CONFIG = [
   { key: 'other', label: 'O', color: '#95E881' },
 ]
 
-export function Controls({ mode, onModeChange }) {
+export function Controls() {
   const { 
     isReady, 
     isPlaying, 
@@ -199,21 +178,6 @@ export function Controls({ mode, onModeChange }) {
           </PlaybackControls>
         </>
       )}
-      
-      <ModeToggle>
-        <ModeButton 
-          $active={mode === 'radial'} 
-          onClick={() => onModeChange('radial')}
-        >
-          Radial
-        </ModeButton>
-        <ModeButton 
-          $active={mode === 'particle'} 
-          onClick={() => onModeChange('particle')}
-        >
-          3D Particles
-        </ModeButton>
-      </ModeToggle>
       
       {(isReady || isMicActive) && (
         <ResetButton onClick={reset}>

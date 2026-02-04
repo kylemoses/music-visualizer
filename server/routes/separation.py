@@ -67,12 +67,24 @@ async def separate_audio(
     Upload an audio file for stem separation.
     Returns a job_id to poll for status.
     """
-    # Validate file type
-    allowed_types = ["audio/mpeg", "audio/wav", "audio/mp3", "audio/x-wav", "audio/flac", "audio/m4a", "audio/x-m4a", "audio/mp4"]
-    if file.content_type not in allowed_types:
+    # Validate file type by MIME type or file extension
+    allowed_types = ["audio/mpeg", "audio/wav", "audio/mp3", "audio/x-wav", "audio/flac", "audio/m4a", "audio/x-m4a", "audio/mp4", "application/octet-stream"]
+    allowed_extensions = [".mp3", ".wav", ".flac", ".m4a", ".mp4", ".aac"]
+    
+    file_ext = os.path.splitext(file.filename)[1].lower() if file.filename else ""
+    
+    # Allow if MIME type matches OR if extension matches (for octet-stream fallback)
+    if file.content_type not in allowed_types and file_ext not in allowed_extensions:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid file type: {file.content_type}. Allowed: {allowed_types}"
+            detail=f"Invalid file type: {file.content_type}. Allowed audio formats: MP3, WAV, FLAC, M4A"
+        )
+    
+    # If content type is octet-stream, verify the extension is allowed
+    if file.content_type == "application/octet-stream" and file_ext not in allowed_extensions:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file extension: {file_ext}. Allowed: {allowed_extensions}"
         )
     
     # Generate job ID
@@ -82,7 +94,9 @@ async def separate_audio(
     upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
     os.makedirs(upload_dir, exist_ok=True)
     
-    file_ext = os.path.splitext(file.filename)[1] or ".mp3"
+    # Use the extension we already extracted, default to .mp3
+    if not file_ext:
+        file_ext = ".mp3"
     input_path = os.path.join(upload_dir, f"{job_id}{file_ext}")
     
     try:

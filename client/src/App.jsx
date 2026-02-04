@@ -1,9 +1,7 @@
-import { useState } from 'react'
 import styled from 'styled-components'
 import { AudioInput } from './components/AudioInput'
 import { ProcessingStatus } from './components/ProcessingStatus'
 import { Controls } from './components/Controls'
-import { RadialSpectrum } from './components/Visualizer/RadialSpectrum'
 import { ParticleCloud } from './components/Visualizer/ParticleCloud'
 import { useAudio } from './context/AudioContext'
 
@@ -62,26 +60,18 @@ const InputOverlay = styled.div`
 `
 
 function App() {
-  const [visualizationMode, setVisualizationMode] = useState('radial') // 'radial' | 'particle'
   const { isReady, isProcessing, processingStatus } = useAudio()
 
   return (
     <AppContainer>
       <Header>
         <Title>Music Visualizer</Title>
-        <Controls 
-          mode={visualizationMode} 
-          onModeChange={setVisualizationMode} 
-        />
+        <Controls />
       </Header>
       
       <MainContent>
         <VisualizerContainer>
-          {visualizationMode === 'radial' ? (
-            <RadialSpectrum />
-          ) : (
-            <ParticleCloud />
-          )}
+          <ParticleCloud />
         </VisualizerContainer>
         
         {!isReady && (
