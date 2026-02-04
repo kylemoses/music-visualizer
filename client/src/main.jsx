@@ -1,0 +1,18 @@
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import { ThemeProvider } from 'styled-components'
+import App from './App.jsx'
+import { GlobalStyles } from './styles/GlobalStyles'
+import { theme } from './styles/theme'
+import { AudioProvider } from './context/AudioContext'
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <ThemeProvider theme={theme}>
+      <GlobalStyles />
+      <AudioProvider>
+        <App />
+      </AudioProvider>
+    </ThemeProvider>
+  </React.StrictMode>,
+)
