@@ -13,9 +13,11 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 
 from services.demucs_service import DemucsService, JobStatus
+from services.soundcloud_service import SoundCloudService, SoundCloudError
 
 router = APIRouter()
 demucs_service = DemucsService()
+soundcloud_service = SoundCloudService()
 
 
 class SeparationResponse(BaseModel):
@@ -100,6 +102,11 @@ async def separate_audio(
     )
 
 
+def _is_soundcloud_url(parsed) -> bool:
+    host = (parsed.netloc or "").lower()
+    return "soundcloud.com" in host
+
+
 @router.post("/separate-url", response_model=SeparationResponse)
 async def separate_from_url(
     background_tasks: BackgroundTasks,
@@ -107,10 +114,10 @@ async def separate_from_url(
 ):
     """
     Download audio from URL and process for stem separation.
-    Supports direct audio URLs and some streaming services.
+    Supports direct audio URLs and SoundCloud track URLs (requires app credentials).
     """
     url = request.url.strip()
-    
+
     # Validate URL
     try:
         parsed = urlparse(url)
@@ -118,11 +125,46 @@ async def separate_from_url(
             raise ValueError("Invalid URL scheme")
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid URL")
-    
+
     # Generate job ID
     job_id = str(uuid.uuid4())
-    
-    # Determine file extension from URL or default to mp3
+
+    # SoundCloud track URLs: resolve and download via API
+    if _is_soundcloud_url(parsed):
+        if not soundcloud_service.is_configured():
+            raise HTTPException(
+                status_code=503,
+                detail="SoundCloud is not configured. Set SOUNDCLOUD_CLIENT_ID and SOUNDCLOUD_CLIENT_SECRET."
+            )
+        upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
+        os.makedirs(upload_dir, exist_ok=True)
+        input_path = os.path.join(upload_dir, f"{job_id}.mp3")
+        demucs_service.jobs[job_id] = JobStatus(status="downloading", progress=0.05)
+        try:
+            await soundcloud_service.resolve_and_download(url, input_path)
+        except SoundCloudError as e:
+            demucs_service.jobs[job_id] = JobStatus(status="failed", error=e.message)
+            status = e.status_code or 400
+            if "not configured" in e.message.lower():
+                status = 503
+            raise HTTPException(status_code=status, detail=e.message)
+        if not os.path.exists(input_path) or os.path.getsize(input_path) == 0:
+            demucs_service.jobs[job_id] = JobStatus(
+                status="failed",
+                error="Failed to download SoundCloud stream."
+            )
+            raise HTTPException(
+                status_code=400,
+                detail="Failed to download SoundCloud audio."
+            )
+        background_tasks.add_task(demucs_service.separate, job_id, input_path)
+        return SeparationResponse(
+            job_id=job_id,
+            status="processing",
+            message="Audio downloaded. Separation started. Poll /api/status/{job_id} for progress."
+        )
+
+    # Direct audio URL: download as before
     path = parsed.path.lower()
     if path.endswith('.wav'):
         file_ext = '.wav'
@@ -132,18 +174,15 @@ async def separate_from_url(
         file_ext = '.ogg'
     else:
         file_ext = '.mp3'
-    
-    # Create upload directory
+
     upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
     os.makedirs(upload_dir, exist_ok=True)
     input_path = os.path.join(upload_dir, f"{job_id}{file_ext}")
-    
-    # Set initial status
+
     demucs_service.jobs[job_id] = JobStatus(status="downloading", progress=0.05)
-    
-    # Download the file
+
     success = await download_audio_from_url(url, input_path)
-    
+
     if not success or not os.path.exists(input_path) or os.path.getsize(input_path) == 0:
         demucs_service.jobs[job_id] = JobStatus(
             status="failed",
@@ -153,10 +192,9 @@ async def separate_from_url(
             status_code=400,
             detail="Failed to download audio. Please provide a direct link to an audio file (MP3, WAV, FLAC)."
         )
-    
-    # Start separation in background
+
     background_tasks.add_task(demucs_service.separate, job_id, input_path)
-    
+
     return SeparationResponse(
         job_id=job_id,
         status="processing",

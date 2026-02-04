@@ -11,7 +11,9 @@ from dotenv import load_dotenv
 
 from routes import separation
 
+# Load .env from server dir or project root so SoundCloud credentials work when run from server/
 load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 app = FastAPI(
     title="Music Visualizer API",

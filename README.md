@@ -61,6 +61,19 @@ npm run dev
 
 The frontend will be available at `http://localhost:5173` and will proxy API requests to the backend at `http://localhost:8000`.
 
+### SoundCloud
+
+The SoundCloud tab lets you paste a track URL and run stem separation. To enable it:
+
+1. Register an app at [soundcloud.com/you/apps](https://soundcloud.com/you/apps).
+2. Create a `.env` file in the `server` directory (or project root, depending on where you run the backend) with:
+   - `SOUNDCLOUD_CLIENT_ID` – your app’s client ID  
+   - `SOUNDCLOUD_CLIENT_SECRET` – your app’s client secret  
+
+Copy `.env.example` to `.env` in the same directory as your backend (e.g. project root or `server/`) and fill in your credentials.
+
+Only **public, playable** single-track URLs are supported. Playlists, user pages, and private or preview-only tracks are not supported in this phase.
+
 ## Stem Colors
 
 | Stem   | Color   | Hex       |
