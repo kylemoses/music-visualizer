@@ -68,7 +68,7 @@ async def separate_audio(
     Returns a job_id to poll for status.
     """
     # Validate file type
-    allowed_types = ["audio/mpeg", "audio/wav", "audio/mp3", "audio/x-wav", "audio/flac"]
+    allowed_types = ["audio/mpeg", "audio/wav", "audio/mp3", "audio/x-wav", "audio/flac", "audio/m4a", "audio/x-m4a", "audio/mp4"]
     if file.content_type not in allowed_types:
         raise HTTPException(
             status_code=400,

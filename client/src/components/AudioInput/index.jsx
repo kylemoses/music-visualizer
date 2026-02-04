@@ -243,7 +243,7 @@ export function AudioInput() {
                 Drag & drop an audio file here, or click to browse
               </DropZoneText>
               <DropZoneSubtext>
-                Supports MP3, WAV, FLAC
+                Supports MP3, WAV, FLAC, M4A
               </DropZoneSubtext>
             </DropZone>
             <HiddenInput
